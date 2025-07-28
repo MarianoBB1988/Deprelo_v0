@@ -5,10 +5,11 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Dashboard } from "@/components/dashboard/dashboard"
-import { CategoriasView } from "@/components/categorias/categorias-view"
-import { ActivosView } from "@/components/activos/activos-view"
-import { ClientesView } from "@/components/clientes/clientes-view"
-import { AmortizacionesView } from "@/components/amortizaciones/amortizaciones-view"
+import CategoriasView from "@/components/categorias/categorias-view"
+import ActivosView from "@/components/activos/activos-view"
+import ClientesView from "@/components/clientes/clientes-view"
+import AmortizacionesView from "@/components/amortizaciones/amortizaciones-view"
+import ParametrosAnualesView from "@/components/parametros/parametros-anuales-view"
 import { ReportesView } from "@/components/reportes/reportes-view"
 import { Button } from "@/components/ui/button"
 import { LogOut, User } from "lucide-react"
@@ -33,6 +34,8 @@ export function MainApp({ user, onLogout }: MainAppProps) {
         return <ClientesView />
       case "amortizaciones":
         return <AmortizacionesView />
+      case "parametros-anuales":
+        return <ParametrosAnualesView />
       case "reportes":
         return <ReportesView />
       default:

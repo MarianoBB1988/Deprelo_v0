@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Reportes Deprelo</title>
+</head>
+<body>
+    <h1>Debug de Reportes</h1>
+    <button onclick="testEndpoints()">Probar Endpoints</button>
+    <div id="results"></div>
+    
+    <script>
+        async function testEndpoints() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Probando endpoints...</p>';
+            
+            try {
+                // Test dashboard
+                console.log('Probando dashboard...');
+                const dashResponse = await fetch('/api/dashboard');
+                console.log('Dashboard status:', dashResponse.status);
+                
+                if (dashResponse.ok) {
+                    const dashData = await dashResponse.json();
+                    console.log('Dashboard data:', dashData);
+                    results.innerHTML += `<p>✅ Dashboard: ${JSON.stringify(dashData)}</p>`;
+                } else {
+                    const error = await dashResponse.text();
+                    console.log('Dashboard error:', error);
+                    results.innerHTML += `<p>❌ Dashboard: ${error}</p>`;
+                }
+                
+                // Test activos
+                console.log('Probando activos...');
+                const activosResponse = await fetch('/api/activos');
+                console.log('Activos status:', activosResponse.status);
+                
+                if (activosResponse.ok) {
+                    const activosData = await activosResponse.json();
+                    console.log('Activos data:', activosData);
+                    results.innerHTML += `<p>✅ Activos: ${activosData.data ? activosData.data.length : 0} elementos</p>`;
+                } else {
+                    const error = await activosResponse.text();
+                    console.log('Activos error:', error);
+                    results.innerHTML += `<p>❌ Activos: ${error}</p>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML += `<p>❌ Error general: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

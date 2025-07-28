@@ -1,9 +1,100 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calculator, Package, TrendingUp, Users } from "lucide-react"
+import { Calculator, Package, TrendingUp, Users, Loader2 } from "lucide-react"
+
+interface DashboardStats {
+  total_activos: number
+  total_clientes: number
+  total_categorias: number
+  valor_total_activos: number
+  amortizacion_anual_actual: number
+}
+
+interface CategoriaStats {
+  id: number
+  categoria_nombre: string
+  total_activos: number
+  valor_total: number
+  valor_residual_total: number
+  valor_promedio: number
+}
+
+interface AmortizacionMes {
+  periodo_mes: number
+  total_amortizaciones: number
+  total_cuotas: number
+  promedio_cuotas: number
+  activos_amortizados: number
+}
 
 export function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [categoriasStats, setCategoriasStats] = useState<CategoriaStats[]>([])
+  const [amortizacionesMes, setAmortizacionesMes] = useState<AmortizacionMes[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const cargarDatos = async () => {
+    try {
+      setLoading(true)
+      
+      // Cargar estadísticas generales
+      const [statsResponse, categoriasResponse, amortizacionesResponse] = await Promise.all([
+        fetch('/api/dashboard?tipo=generales'),
+        fetch('/api/dashboard?tipo=categorias'),
+        fetch('/api/dashboard?tipo=amortizaciones-mes')
+      ])
+
+      const statsResult = await statsResponse.json()
+      const categoriasResult = await categoriasResponse.json()
+      const amortizacionesResult = await amortizacionesResponse.json()
+
+      if (statsResult.success) {
+        setStats(statsResult.data)
+      }
+      if (categoriasResult.success) {
+        setCategoriasStats(categoriasResult.data)
+      }
+      if (amortizacionesResult.success) {
+        setAmortizacionesMes(amortizacionesResult.data)
+      }
+    } catch (error) {
+      console.error('Error cargando datos del dashboard:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  if (loading || !stats) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Cargando dashboard...</span>
+      </div>
+    )
+  }
+
+  const formatearMoneda = (valor: number) => {
+    return new Intl.NumberFormat('es-UY', {
+      style: 'currency',
+      currency: 'UYU',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(valor)
+  }
+
+  const obtenerNombreMes = (numeroMes: number) => {
+    const meses = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    return meses[numeroMes - 1] || 'N/A'
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -19,8 +110,8 @@ export function Dashboard() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">247</div>
-            <p className="text-xs text-muted-foreground">+12% desde el mes pasado</p>
+            <div className="text-2xl font-bold">{stats.total_activos}</div>
+            <p className="text-xs text-muted-foreground">Activos registrados</p>
           </CardContent>
         </Card>
         <Card>
@@ -29,8 +120,8 @@ export function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,450,000</div>
-            <p className="text-xs text-muted-foreground">+8% desde el mes pasado</p>
+            <div className="text-2xl font-bold">{formatearMoneda(stats.valor_total_activos)}</div>
+            <p className="text-xs text-muted-foreground">Valor de adquisición total</p>
           </CardContent>
         </Card>
         <Card>
@@ -39,8 +130,8 @@ export function Dashboard() {
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$184,000</div>
-            <p className="text-xs text-muted-foreground">Cuota anual calculada</p>
+            <div className="text-2xl font-bold">{formatearMoneda(stats.amortizacion_anual_actual)}</div>
+            <p className="text-xs text-muted-foreground">Cuota anual {new Date().getFullYear()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -49,42 +140,45 @@ export function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
-            <p className="text-xs text-muted-foreground">+2 nuevos este mes</p>
+            <div className="text-2xl font-bold">{stats.total_clientes}</div>
+            <p className="text-xs text-muted-foreground">{stats.total_categorias} categorías disponibles</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gráficos simplificados */}
+      {/* Gráficos con datos reales */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Amortizaciones por Mes</CardTitle>
-            <CardDescription>Evolución de las amortizaciones durante el año</CardDescription>
+            <CardDescription>Evolución de las amortizaciones durante el año {new Date().getFullYear()}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { mes: "Enero", valor: 12000, porcentaje: 60 },
-                { mes: "Febrero", valor: 15000, porcentaje: 75 },
-                { mes: "Marzo", valor: 18000, porcentaje: 90 },
-                { mes: "Abril", valor: 14000, porcentaje: 70 },
-                { mes: "Mayo", valor: 16000, porcentaje: 80 },
-                { mes: "Junio", valor: 19000, porcentaje: 95 },
-              ].map((item) => (
-                <div key={item.mes} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-sm font-medium w-16">{item.mes}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${item.porcentaje}%` }}
-                      />
+              {amortizacionesMes.length > 0 ? (
+                amortizacionesMes.map((item) => {
+                  const maxValor = Math.max(...amortizacionesMes.map(a => a.total_cuotas))
+                  const porcentaje = maxValor > 0 ? (item.total_cuotas / maxValor) * 100 : 0
+                  return (
+                    <div key={item.periodo_mes} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-sm font-medium w-20">{obtenerNombreMes(item.periodo_mes)}</span>
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${porcentaje}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold ml-3">{formatearMoneda(item.total_cuotas)}</span>
                     </div>
-                  </div>
-                  <span className="text-sm font-bold ml-3">${item.valor.toLocaleString()}</span>
+                  )
+                })
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No hay datos de amortizaciones para este año
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -96,32 +190,47 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { name: "Equipos", value: 45, color: "bg-blue-500" },
-                { name: "Vehículos", value: 30, color: "bg-green-500" },
-                { name: "Inmuebles", value: 15, color: "bg-yellow-500" },
-                { name: "Otros", value: 10, color: "bg-red-500" },
-              ].map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-4 h-4 rounded-full ${item.color}`}></div>
-                    <span className="text-sm font-medium">{item.name}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2 ml-3">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${item.color}`}
-                        style={{ width: `${item.value}%` }}
-                      />
+              {categoriasStats.length > 0 ? (
+                categoriasStats.map((item, index) => {
+                  const totalActivos = categoriasStats.reduce((sum, cat) => sum + cat.total_activos, 0)
+                  const porcentaje = totalActivos > 0 ? (item.total_activos / totalActivos) * 100 : 0
+                  const colores = [
+                    "bg-blue-500",
+                    "bg-green-500", 
+                    "bg-yellow-500",
+                    "bg-red-500",
+                    "bg-purple-500",
+                    "bg-orange-500"
+                  ]
+                  const color = colores[index % colores.length]
+                  
+                  return (
+                    <div key={item.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className={`w-4 h-4 rounded-full ${color}`}></div>
+                        <span className="text-sm font-medium">{item.categoria_nombre}</span>
+                        <div className="flex-1 bg-muted rounded-full h-2 ml-3">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${color}`}
+                            style={{ width: `${porcentaje}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold ml-3">{porcentaje.toFixed(1)}%</span>
                     </div>
-                  </div>
-                  <span className="text-sm font-bold ml-3">{item.value}%</span>
+                  )
+                })
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No hay datos de categorías disponibles
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabla de resumen */}
+      {/* Tabla de resumen con datos reales */}
       <Card>
         <CardHeader>
           <CardTitle>Resumen de Activos por Categoría</CardTitle>
@@ -135,25 +244,28 @@ export function Dashboard() {
                   <th className="text-left p-2">Categoría</th>
                   <th className="text-left p-2">Cantidad</th>
                   <th className="text-left p-2">Valor Total</th>
-                  <th className="text-left p-2">Amortización Anual</th>
-                  <th className="text-left p-2">Valor Contable</th>
+                  <th className="text-left p-2">Valor Promedio</th>
+                  <th className="text-left p-2">Valor Residual</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { categoria: "Equipos de Computación", cantidad: 45, valor: 450000, amortizacion: 150000 },
-                  { categoria: "Vehículos", cantidad: 12, valor: 1250000, amortizacion: 250000 },
-                  { categoria: "Maquinaria", cantidad: 8, valor: 2000000, amortizacion: 200000 },
-                  { categoria: "Inmuebles", cantidad: 3, valor: 5000000, amortizacion: 100000 },
-                ].map((item, index) => (
-                  <tr key={index} className="border-b hover:bg-muted/50">
-                    <td className="p-2 font-medium">{item.categoria}</td>
-                    <td className="p-2">{item.cantidad}</td>
-                    <td className="p-2">${item.valor.toLocaleString()}</td>
-                    <td className="p-2 text-red-600">${item.amortizacion.toLocaleString()}</td>
-                    <td className="p-2 font-medium">${(item.valor - item.amortizacion).toLocaleString()}</td>
+                {categoriasStats.length > 0 ? (
+                  categoriasStats.map((item) => (
+                    <tr key={item.id} className="border-b hover:bg-muted/50">
+                      <td className="p-2 font-medium">{item.categoria_nombre}</td>
+                      <td className="p-2">{item.total_activos}</td>
+                      <td className="p-2">{formatearMoneda(item.valor_total)}</td>
+                      <td className="p-2">{formatearMoneda(item.valor_promedio)}</td>
+                      <td className="p-2 text-green-600">{formatearMoneda(item.valor_residual_total)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                      No hay datos de categorías disponibles
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
