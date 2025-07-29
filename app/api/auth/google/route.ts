@@ -130,8 +130,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Usuario no existe, crear nuevo
       const insertQuery = `
-        INSERT INTO usuarios (nombre, apellido, email, password, rol, activo, fecha_creacion, auth_provider, avatar_url)
-        VALUES (?, ?, ?, NULL, 'contador', TRUE, NOW(), 'google', ?)
+        INSERT INTO usuarios (nombre, apellido, email, password, rol, activo, avatar_url)
+        VALUES (?, ?, ?, NULL, 'contador', TRUE, ?)
       `
       
       const result = await executeQuery(insertQuery, [
