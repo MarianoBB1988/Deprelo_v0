@@ -1,3 +1,12 @@
+
+// Declaración global para grecaptcha
+declare global {
+  interface Window {
+    grecaptcha?: {
+      execute(siteKey: string, options: { action: string }): Promise<string>;
+    };
+  }
+}
 "use client"
 
 import React, { useState, useEffect } from "react"
@@ -9,6 +18,8 @@ import { Label } from "@/components/ui/label"
 import { Building2, Loader2, AlertCircle, Mail, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+const RECAPTCHA_SITE_KEY = "6Lei4qIrAAAAAKA93Vt40sFaH-qzgdrSe8tIFgXB";
 
 export function LoginForm() {
   const [isLogin, setIsLogin] = useState(true)
@@ -26,43 +37,52 @@ export function LoginForm() {
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
-      const body = isLogin 
-        ? { email, password }
-        : { nombre, apellido, email, password, confirmPassword }
+      // Ejecutar reCaptcha v3
+      if (window.grecaptcha) {
+        const recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "login" });
+        if (!recaptchaToken) {
+          setError("No se pudo validar reCaptcha. Intenta de nuevo.");
+          setIsLoading(false);
+          return;
+        }
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
+        const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+        const body = isLogin
+          ? { email, password, recaptchaToken }
+          : { nombre, apellido, email, password, confirmPassword, recaptchaToken };
 
-      const data = await response.json()
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Error en la autenticación')
-      }
+        const data = await response.json();
 
-      if (data.success) {
-        // Esperar un poco para asegurar que la cookie se establezca
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
-        // Redirigir al dashboard con replace para evitar el botón de atrás
-        window.location.href = '/dashboard'
+        if (!response.ok) {
+          throw new Error(data.error || 'Error en la autenticación');
+        }
+
+        if (data.success) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          window.location.href = '/dashboard';
+        } else {
+          throw new Error(data.error || 'Error en la autenticación');
+        }
       } else {
-        throw new Error(data.error || 'Error en la autenticación')
+        setError("No se pudo cargar reCaptcha. Intenta de nuevo.");
       }
     } catch (error: any) {
-      setError(error.message || 'Error inesperado')
+      setError(error.message || 'Error inesperado');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -249,17 +269,27 @@ export function LoginForm() {
   useEffect(() => {
     // Cargar el script de Google Sign-In
     if (!document.getElementById('google-signin-script')) {
-      const script = document.createElement('script')
-      script.id = 'google-signin-script'
-      script.src = 'https://accounts.google.com/gsi/client'
-      script.async = true
-      script.defer = true
-      script.onload = initializeGoogleSignIn
-      document.head.appendChild(script)
+      const script = document.createElement('script');
+      script.id = 'google-signin-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogleSignIn;
+      document.head.appendChild(script);
     } else {
-      initializeGoogleSignIn()
+      initializeGoogleSignIn();
     }
-  }, [isLogin])
+
+    // Cargar el script de reCaptcha v3
+    if (!document.getElementById('recaptcha-v3-script')) {
+      const recaptchaScript = document.createElement('script');
+      recaptchaScript.id = 'recaptcha-v3-script';
+      recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+      recaptchaScript.async = true;
+      recaptchaScript.defer = true;
+      document.head.appendChild(recaptchaScript);
+    }
+  }, [isLogin]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
